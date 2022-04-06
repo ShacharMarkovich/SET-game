@@ -62,12 +62,18 @@ class SetGameHandler:
         return self.get_k_random_cards(12)
 
     def change_bg(self, btn):
+        """
+        change the given button background color.
+
+        :param btn: btn to change it background color
+        """
         if btn.cget('bg') == "red":
             btn.config(bg="black")
+
             if btn in self.selected_btn:
                 self.selected_btn.remove(btn)
         else:
-            self.selected_btn.append(btn)  # .cget('text').split('\\')[-1]
+            self.selected_btn.append(btn)
             btn.config(bg="red")
 
     def add_card(self, path: str, master: tk.Frame) -> tk.Button:
@@ -86,7 +92,7 @@ class SetGameHandler:
 
     def load_gui_board(self, board: List[Card.Card]):
         """
-        load the board to the window
+        load the board to the GUI window
 
         :param board: the cards
         """
@@ -116,12 +122,17 @@ class SetGameHandler:
         return lists
 
     def check_it(self):
+        """
+        get the player selected cards and check if they are a SET and play accordingly
+        """
         while self.is_active:
-            if len(self.selected_btn) == 3:
+            if len(self.selected_btn) == 3:  # must be 3 cards in order to ba a SET
+                # get the selected cards objects and check if they are a SET:
                 _cards = []
                 for im in self.selected_btn:
                     _cards.append([c for c in self.all_cards if c.path_2_image == im.cget('text').split('\\')[-1]][0])
                 if CheckSet.check_set(_cards[0], _cards[1], _cards[2]):
+                    # if yes - update the selected button to new cards
                     messagebox.showinfo("This is a SET!", "This is a SET!")
                     new_cards = self.get_k_random_cards()
                     for i, btn in enumerate(self.selected_btn):
@@ -138,10 +149,16 @@ class SetGameHandler:
                 self.selected_btn = []
 
     def on_closing(self):
+        """
+        change the main window status to inactive and close it.
+        """
         self.is_active = False
         self.window.destroy()
 
-    def main(self):
+    def play(self):
+        """
+        Play the SET game
+        """
         board = self.get_board()
 
         self.load_gui_board(board)
@@ -149,10 +166,10 @@ class SetGameHandler:
         th = threading.Thread(target=self.check_it)
         th.start()
 
-        # TODO: bot to solve the game
+        # TODO: AI which solve the game
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.window.mainloop()
 
 
 if __name__ == "__main__":
-    SetGameHandler().main()
+    SetGameHandler().play()
