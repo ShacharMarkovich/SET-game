@@ -1,0 +1,7 @@
+pip~=22.0.4
+cryptography~=36.0.2
+lxml~=4.6.3
+setuptools~=49.2.1
+future~=0.18.2
+Pillow~=8.0.1
+requests~=2.25.1
