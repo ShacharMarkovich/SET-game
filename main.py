@@ -79,8 +79,6 @@ class SetGameHandler:
         :return: picture as button
         """
         i1 = ImageTk.PhotoImage(Image.open(path))
-        print(path)
-        print(path.split('\\')[-1].split('.')[0])
         im1 = tk.Button(text=path, master=master, image=i1, background="black")
         im1.config(command=lambda: self.change_bg(im1))
         im1.image = i1
@@ -126,16 +124,17 @@ class SetGameHandler:
                 if CheckSet.check_set(_cards[0], _cards[1], _cards[2]):
                     messagebox.showinfo("This is a SET!", "This is a SET!")
                     # TODO: replace those cards
-                    """new_cards = self.get_k_random_cards()
+                    new_cards = self.get_k_random_cards()
                     for i, btn in enumerate(self.selected_btn):
-                        new_im = ImageTk.PhotoImage(Image.open(SetGameHandler.ImagesPath + new_cards[i].path_2_image))
-                        btn.config(text=path, master=master, image=new_im, background="black")
-                        btn.config(command=lambda: change_bg(im1))
-                        btn.image = new_im"""
+                        path = SetGameHandler.ImagesPath + new_cards[i].path_2_image
+                        new_im = ImageTk.PhotoImage(Image.open(path))
+                        btn.config(text=path, image=new_im)
+                        btn.image = new_im
                 else:
                     messagebox.showerror("Not a SET!", "Not a SET!")
-                    for btn in self.selected_btn:
-                        btn.config(bg="black")
+
+                for btn in self.selected_btn:
+                    btn.config(bg="black")
 
                 self.selected_btn = []
 
