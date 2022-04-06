@@ -17,6 +17,7 @@ import CheckSet
 class SetGameHandler:
     ImagesPath = "Cards\\Images\\"
     JsonsPath = "Cards\\Jsons\\"
+    PlaceHolder = "back.jpg"
 
     def __init__(self):
         self.window = tk.Tk()
@@ -68,27 +69,27 @@ class SetGameHandler:
 
         :param btn: btn to change it background color
         """
-        if btn.cget('bg') == "red":
-            btn.config(bg="black")
+        if btn.cget('text') != SetGameHandler.PlaceHolder:
+            if btn.cget('bg') == "red":
+                btn.config(bg="black")
 
-            if btn in self.selected_btn:
-                self.selected_btn.remove(btn)
-        else:
-            self.selected_btn.append(btn)
-            btn.config(bg="red")
+                if btn in self.selected_btn:
+                    self.selected_btn.remove(btn)
+            else:
+                self.selected_btn.append(btn)
+                btn.config(bg="red")
 
-    def add_card(self, path: str, master: tk.Frame, row, col) -> tk.Button:
+    def add_card(self, name: str, path: str, master: tk.Frame) -> tk.Button:
         """
         add the card to the `master` window
 
+        :param name: the card's name
         :param path: path to the card picture
         :param master: current frame window
         :return: picture as button
-        :param row:
-        :param col:
         """
         i1 = ImageTk.PhotoImage(Image.open(path))
-        im1 = tk.Button(name=f"btn{row},{col}", text=path, master=master, image=i1, background="black")
+        im1 = tk.Button(name=name, text=path, master=master, image=i1, background="black")
         im1.config(command=lambda: self.change_bg(im1))
         im1.image = i1
         return im1
@@ -105,7 +106,8 @@ class SetGameHandler:
             for j in range(4):
                 card_button = self.window.children[f"{i},{j}"].children[f"btn{i},{j}"]
                 img = card_button.cget('text').split('\\')[-1]
-                board_cards[img] = (card_button, [card for card in self.all_cards if card.path_2_image == img][0])
+                if img != SetGameHandler.PlaceHolder:
+                    board_cards[img] = (card_button, [card for card in self.all_cards if card.path_2_image == img][0])
 
         # get all the subset of possible SETs from them:
         possible_sets = combinations(board_cards.keys(), 3)
@@ -123,15 +125,35 @@ class SetGameHandler:
         if self.cards_amount == 15:
             messagebox.showerror("Oops", "Sorry!\nI cannot add more cards")
         else:
+            k = 0
             new_cards = self.get_k_random_cards()
-            for i, new_card in enumerate(new_cards):
-                frame = tk.Frame(name=f"{i},4", master=self.window, relief=tk.RAISED)
-                frame.grid(row=i, column=4)
-                im = self.add_card(SetGameHandler.ImagesPath + new_card.path_2_image, frame)
-                im.pack(pady=5, padx=5)
-                self.board.append(new_card)
+            for frame_key in (k for k in self.window.children.keys() if ',' in k):
+                if 'pH' + frame_key in self.window.children[frame_key].children:
+                    self.window.children[frame_key].children['pH' + frame_key].destroy()
 
+                    self.window.children[frame_key].grid(row=int(frame_key.split(',')[0]),
+                                                         column=int(frame_key.split(',')[1]))
+                    im = self.add_card(f"btn{frame_key}", SetGameHandler.ImagesPath + new_cards[k].path_2_image,
+                                       self.window.children[frame_key])
+                    im.pack(pady=5, padx=5)
+                    self.board.append(new_cards[k])
+                    k += 1
             self.cards_amount = 15
+
+    def remove_3_cards(self):
+        if self.cards_amount != 15:
+            raise Exception("It should not have happened...")
+        else:
+            selected_cards = []
+            for btn in self.selected_btn:
+                selected_cards.append(
+                    [c for c in self.all_cards if c.path_2_image == btn.cget('text').split('\\')[-1]][0])
+            for i, btn in enumerate(self.selected_btn):
+                new_im = ImageTk.PhotoImage(Image.open(SetGameHandler.PlaceHolder))
+                btn.config(text=SetGameHandler.PlaceHolder, image=new_im)
+                btn.image = new_im
+                # update self.board
+                self.board.remove(selected_cards[i])
 
     def load_gui_board(self):
         """
@@ -143,10 +165,16 @@ class SetGameHandler:
             for j in range(4):
                 frame = tk.Frame(name=f"{i},{j}", master=self.window, relief=tk.RAISED)
                 frame.grid(row=i, column=j)
-                im = self.add_card(SetGameHandler.ImagesPath + self.board[k].path_2_image, frame, i, j)
+                im = self.add_card(f"btn{i},{j}", SetGameHandler.ImagesPath + self.board[k].path_2_image, frame)
                 im.pack(pady=5, padx=5)
                 k += 1
         self.cards_amount = 12
+
+        for i in range(3):
+            frame = tk.Frame(name=f"{i},4", master=self.window, relief=tk.RAISED)
+            frame.grid(row=i, column=4)
+            im = self.add_card(f"pH{i},4", SetGameHandler.PlaceHolder, frame)
+            im.pack(pady=5, padx=5)
 
         # load the help-me button:
         frame = tk.Frame(name="help_frame", master=self.window, relief=tk.RAISED)
@@ -184,14 +212,7 @@ class SetGameHandler:
                             self.board.remove(_cards[i])
                             self.board.append(new_cards[i])
                     else:  # col 4 is the last one
-                        keys = [k for k in self.window.children.keys() if ',' in k]
-                        # self.board:list[Card] - all cards on GUI (as Card object)
-                        # _cards:list[Card] - the selected SET's cards
-                        # self.selected_btn:list[tk.Button] - the selected SET's buttons
-
-                        # remove from self.board the _cards
-                        # update self.selected_btn to show some others cards,
-                        # and update self.window.children['0:3,4'] to show nothing
+                        self.remove_3_cards()
                         self.cards_amount = 12
 
                 else:
