@@ -4,6 +4,7 @@ import os
 import random
 import threading
 import tkinter as tk
+from itertools import combinations
 from tkinter import messagebox
 from typing import List
 
@@ -23,9 +24,8 @@ class SetGameHandler:
 
         self.all_cards = []
         self.available_cards = []
+        self.board = []
         self.load_all_cards()
-
-        self.rest_cards = []
 
         self.selected_btn = []
 
@@ -90,36 +90,60 @@ class SetGameHandler:
         im1.image = i1
         return im1
 
-    def load_gui_board(self, board: List[Card.Card]):
-        """
-        load the board to the GUI window
+    @staticmethod
+    def sub3_lists(my_list):
+        return combinations(my_list, 3)
 
-        :param board: the cards
-        """
-        k = 0
+    def help_me(self):
+        # get all cards and their button on the screen:
+        board_cards = {}
         for i in range(3):
             for j in range(4):
-                frame = tk.Frame(master=self.window, relief=tk.RAISED)
+                card_button = self.window.children['main_frame'].children[f"{i},{j}"].children['!button']
+                img = card_button.cget('text').split('\\')[-1]
+                board_cards[img] = (card_button, [card for card in self.all_cards if card.path_2_image == img][0])
+
+        # get all the subset of possible SETs from them:
+        possible_sets = combinations(board_cards.keys(), 3)
+        for possible_set in possible_sets:
+            if CheckSet.check_set(board_cards[possible_set[0]][1],
+                                  board_cards[possible_set[1]][1],
+                                  board_cards[possible_set[2]][1]):
+                board_cards[possible_set[0]][0].config(bg="blue")
+                board_cards[possible_set[1]][0].config(bg="blue")
+                board_cards[possible_set[2]][0].config(bg="blue")
+                return
+        messagebox.showerror("Oops", "Sorry!\nThere is no set!\nPlease add 3 more cards!")
+
+    def load_gui_board(self):
+        """
+        load the board to the GUI window
+        """
+        # load the playing cards:
+        k = 0
+        main_frame = tk.Frame(name="main_frame", master=self.window, relief=tk.RAISED)
+        main_frame.grid(column=0)
+        for i in range(3):
+            for j in range(4):
+                frame = tk.Frame(name=f"{i},{j}", master=main_frame, relief=tk.RAISED)
                 frame.grid(row=i, column=j)
-                im = self.add_card(SetGameHandler.ImagesPath + board[k].path_2_image, frame)
+                im = self.add_card(SetGameHandler.ImagesPath + self.board[k].path_2_image, frame)
                 im.pack(pady=5, padx=5)
                 k += 1
 
-    @staticmethod
-    def sub3_lists(lst: list) -> List[list]:
-        """
-        get all `lst`'s sub-lists in length of 3
+        # load the help-me button:
+        frame = tk.Frame(name="help_frame", master=main_frame, relief=tk.RAISED)
+        frame.grid(row=0, column=4)
+        help_btn = tk.Button(text="Find me a SET", master=frame, command=self.help_me)
+        help_btn.pack(pady=5, padx=5)
 
-        :param lst: the list
-        :return: all the sub-lists in length of 3
-        """
-        lists = []
-        for i in range(len(lst) + 1):
-            for j in range(i):
-                sl = lst[j: i]
-                if len(sl) == 3:
-                    lists.append(sl)
-        return lists
+        # load the add cards button:
+        frame = tk.Frame(name="add_cards_frame", master=main_frame, relief=tk.RAISED)
+        frame.grid(row=1, column=4)
+        help_btn = tk.Button(text="add 3 cards", master=frame,
+                             command=lambda: messagebox.showerror("Oops",
+                                                                  "Sorry!\nThere is still no implement for this!"))
+        help_btn.pack(pady=5, padx=5)
 
     def check_it(self):
         """
@@ -159,14 +183,15 @@ class SetGameHandler:
         """
         Play the SET game
         """
-        board = self.get_board()
+        self.board = self.get_board()
 
-        self.load_gui_board(board)
+        self.load_gui_board()
 
         th = threading.Thread(target=self.check_it)
         th.start()
 
-        # TODO: AI which solve the game
+        # TODO: add 3 cards when there is no set
+        # TODO: handle when the deck is finished
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.window.mainloop()
 
