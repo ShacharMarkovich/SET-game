@@ -123,7 +123,6 @@ class SetGameHandler:
                     _cards.append([c for c in self.all_cards if c.path_2_image == im.cget('text').split('\\')[-1]][0])
                 if CheckSet.check_set(_cards[0], _cards[1], _cards[2]):
                     messagebox.showinfo("This is a SET!", "This is a SET!")
-                    # TODO: replace those cards
                     new_cards = self.get_k_random_cards()
                     for i, btn in enumerate(self.selected_btn):
                         path = SetGameHandler.ImagesPath + new_cards[i].path_2_image
@@ -147,11 +146,8 @@ class SetGameHandler:
 
         self.load_gui_board(board)
 
-        # TODO: add a thread which when 3 buttons are selected - check if they are a SET
         th = threading.Thread(target=self.check_it)
         th.start()
-        # TODO:     if yes - remove those cards and load new once (maybe show  a fit msg)
-        # TODO:     else - clear the selected list (maybe show  a fit msg)
 
         # TODO: bot to solve the game
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
