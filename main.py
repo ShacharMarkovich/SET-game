@@ -12,20 +12,23 @@ from PIL import Image, ImageTk
 
 import Card
 import CheckSet
-from getCards.DownloadAll import download_all
 from getCards.createJson import create
+from getCards.extractAllImages import extract_all_images
 
 
 class SetGameHandler:
     ImagesPath = "Cards\\Images\\"
     JsonsPath = "Cards\\Jsons\\"
     PlaceHolder = "back.jpg"
+    Icon = "icon.ico"
     Amount = 81
 
     def __init__(self):
-        self.check_data()
+        self.get_data()
 
         self.window = tk.Tk()
+        self.window.iconbitmap(SetGameHandler.Icon)
+        self.window.title("The SET Game - by Shachar Markovich")
         self.is_active = True
 
         self.all_cards = []
@@ -38,22 +41,27 @@ class SetGameHandler:
         self.cards_amount = 12
 
     @staticmethod
-    def check_data():
+    def get_data():
         """
         check if all description jsons and images are exists in the directory,
         if not - create them.
-        TODO: if a specific card(s) is missing
         """
+
+        # check if Cards dir exists:
         if not os.path.exists(SetGameHandler.JsonsPath.split("\\")[0]):
             os.mkdir(SetGameHandler.JsonsPath.split("\\")[0])
 
+        # check if Cards/Jsons dir exists:
         if not os.path.exists(SetGameHandler.JsonsPath):
             os.mkdir(SetGameHandler.JsonsPath)
+        if len(os.listdir(SetGameHandler.JsonsPath)) != SetGameHandler.Amount:
             create(SetGameHandler.JsonsPath)
 
+        # check if Cards/Images dir exists:
         if not os.path.exists(SetGameHandler.ImagesPath):
             os.mkdir(SetGameHandler.ImagesPath)
-            download_all(SetGameHandler.ImagesPath)
+        if len(os.listdir(SetGameHandler.ImagesPath)) != SetGameHandler.Amount:
+            extract_all_images()
 
     def load_all_cards(self) -> None:
         """
@@ -77,7 +85,6 @@ class SetGameHandler:
         """
         if not len(self.available_cards):
             return False
-        print("amount of available cards:", len(self.available_cards))
         selected = random.sample(self.available_cards, k)
         for card in selected:
             self.available_cards.remove(card)
@@ -99,13 +106,13 @@ class SetGameHandler:
         """
         if btn.cget('text') != SetGameHandler.PlaceHolder:
             if btn.cget('bg') == "green":
-                btn.config(bg="black", highlightthickness=1)
+                btn.config(bg="white", highlightthickness=3)
 
                 if btn in self.selected_btn:
                     self.selected_btn.remove(btn)
             else:
                 self.selected_btn.append(btn)
-                btn.config(bg="green", highlightthickness=2)
+                btn.config(bg="green", highlightthickness=3)
 
     def add_card(self, name: str, path: str, master: tk.Frame) -> tk.Button:
         """
@@ -117,8 +124,8 @@ class SetGameHandler:
         :return: picture as button
         """
         i1 = ImageTk.PhotoImage(Image.open(path))
-        im1 = tk.Button(name=name, text=path, master=master, image=i1, background="black")
-        im1.config(command=lambda: self.change_bg(im1), highlightthickness=1)
+        im1 = tk.Button(name=name, text=path, master=master, image=i1, background="white")
+        im1.config(command=lambda: self.change_bg(im1), highlightthickness=3)
         im1.image = i1
         return im1
 
@@ -144,9 +151,9 @@ class SetGameHandler:
             if CheckSet.check_set(board_cards[possible_set[0]][1],
                                   board_cards[possible_set[1]][1],
                                   board_cards[possible_set[2]][1]):
-                board_cards[possible_set[0]][0].config(bg="blue", highlightthickness=2)
-                board_cards[possible_set[1]][0].config(bg="blue", highlightthickness=2)
-                board_cards[possible_set[2]][0].config(bg="blue", highlightthickness=2)
+                board_cards[possible_set[0]][0].config(bg="blue", highlightthickness=3)
+                board_cards[possible_set[1]][0].config(bg="blue", highlightthickness=3)
+                board_cards[possible_set[2]][0].config(bg="blue", highlightthickness=3)
                 return
         messagebox.showerror("Oops", "Sorry!\nThere is no set!\nPlease add 3 more cards!")
 
@@ -264,7 +271,7 @@ class SetGameHandler:
                     messagebox.showerror("Not a SET!", "Not a SET!")
 
                 for btn in self.selected_btn:
-                    btn.config(bg="black", highlightthickness=1)
+                    btn.config(bg="white", highlightthickness=3)
 
                 self.selected_btn = []
 
