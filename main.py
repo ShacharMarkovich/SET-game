@@ -12,24 +12,48 @@ from PIL import Image, ImageTk
 
 import Card
 import CheckSet
+from getCards.DownloadAll import download_all
+from getCards.createJson import create
 
 
 class SetGameHandler:
     ImagesPath = "Cards\\Images\\"
     JsonsPath = "Cards\\Jsons\\"
     PlaceHolder = "back.jpg"
+    Amount = 81
 
     def __init__(self):
+        self.check_data()
+
         self.window = tk.Tk()
         self.is_active = True
 
         self.all_cards = []
         self.available_cards = []
         self.board = []
+
         self.load_all_cards()
 
         self.selected_btn = []
         self.cards_amount = 12
+
+    @staticmethod
+    def check_data():
+        """
+        check if all description jsons and images are exists in the directory,
+        if not - create them.
+        TODO: if a specific card(s) is missing
+        """
+        if not os.path.exists(SetGameHandler.JsonsPath.split("\\")[0]):
+            os.mkdir(SetGameHandler.JsonsPath.split("\\")[0])
+
+        if not os.path.exists(SetGameHandler.JsonsPath):
+            os.mkdir(SetGameHandler.JsonsPath)
+            create(SetGameHandler.JsonsPath)
+
+        if not os.path.exists(SetGameHandler.ImagesPath):
+            os.mkdir(SetGameHandler.ImagesPath)
+            download_all(SetGameHandler.ImagesPath)
 
     def load_all_cards(self) -> None:
         """
@@ -242,6 +266,7 @@ class SetGameHandler:
         th.start()
 
         # TODO: add 3 cards when there is no set
+
         # TODO: handle when the deck is finished
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.window.mainloop()

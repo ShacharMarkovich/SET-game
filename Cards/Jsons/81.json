@@ -1,7 +1,7 @@
 {
-    "count": 3,
-    "shape": 3,
-    "color": 3,
-    "shading": 3,
-    "image":"81.png"
+"count": 3,
+"shape": "green",
+"color": "round",
+"shading": "empty",
+"image": "81.png"
 }
