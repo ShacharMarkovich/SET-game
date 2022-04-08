@@ -6,7 +6,7 @@ import threading
 import tkinter as tk
 from itertools import combinations
 from tkinter import messagebox
-from typing import List
+from typing import List, Union
 
 from PIL import Image, ImageTk
 
@@ -67,13 +67,17 @@ class SetGameHandler:
                 self.all_cards.append(card)
         self.available_cards = [copy.deepcopy(c) for c in self.all_cards]
 
-    def get_k_random_cards(self, k: int = 3) -> List[Card.Card]:
+    def get_k_random_cards(self, k: int = 3) -> Union[List[Card.Card], bool]:
         """
         get `k` cards from the deck.
+        if deck is empty - return false.
 
         :param k: amount of cards
         :return: `k` random cards
         """
+        if not len(self.available_cards):
+            return False
+        print("amount of available cards:", len(self.available_cards))
         selected = random.sample(self.available_cards, k)
         for card in selected:
             self.available_cards.remove(card)
@@ -94,14 +98,14 @@ class SetGameHandler:
         :param btn: btn to change it background color
         """
         if btn.cget('text') != SetGameHandler.PlaceHolder:
-            if btn.cget('bg') == "red":
-                btn.config(bg="black")
+            if btn.cget('bg') == "green":
+                btn.config(bg="black", highlightthickness=1)
 
                 if btn in self.selected_btn:
                     self.selected_btn.remove(btn)
             else:
                 self.selected_btn.append(btn)
-                btn.config(bg="red")
+                btn.config(bg="green", highlightthickness=2)
 
     def add_card(self, name: str, path: str, master: tk.Frame) -> tk.Button:
         """
@@ -114,7 +118,7 @@ class SetGameHandler:
         """
         i1 = ImageTk.PhotoImage(Image.open(path))
         im1 = tk.Button(name=name, text=path, master=master, image=i1, background="black")
-        im1.config(command=lambda: self.change_bg(im1))
+        im1.config(command=lambda: self.change_bg(im1), highlightthickness=1)
         im1.image = i1
         return im1
 
@@ -124,6 +128,7 @@ class SetGameHandler:
         if there is a SET - show it to the player,
         else - show fit message.
         """
+        # TODO: make it return the cards and how show them
         # get all cards and their button on the screen:
         board_cards = {}
         for i in range(3):
@@ -139,9 +144,9 @@ class SetGameHandler:
             if CheckSet.check_set(board_cards[possible_set[0]][1],
                                   board_cards[possible_set[1]][1],
                                   board_cards[possible_set[2]][1]):
-                board_cards[possible_set[0]][0].config(bg="blue")
-                board_cards[possible_set[1]][0].config(bg="blue")
-                board_cards[possible_set[2]][0].config(bg="blue")
+                board_cards[possible_set[0]][0].config(bg="blue", highlightthickness=2)
+                board_cards[possible_set[1]][0].config(bg="blue", highlightthickness=2)
+                board_cards[possible_set[2]][0].config(bg="blue", highlightthickness=2)
                 return
         messagebox.showerror("Oops", "Sorry!\nThere is no set!\nPlease add 3 more cards!")
 
@@ -151,18 +156,22 @@ class SetGameHandler:
         else:
             k = 0
             new_cards = self.get_k_random_cards()
-            for frame_key in (k for k in self.window.children.keys() if ',' in k):
-                if 'pH' + frame_key in self.window.children[frame_key].children:
-                    self.window.children[frame_key].children['pH' + frame_key].destroy()
+            if not new_cards:
+                messagebox.showerror("Oops", "No more cards to add!")
+            else:
+                for frame_key in (k for k in self.window.children.keys() if ',' in k):
+                    child_id = list(self.window.children[frame_key].children)[0]
+                    if self.window.children[frame_key].children[child_id].cget('text') == self.PlaceHolder:
+                        self.window.children[frame_key].children[child_id].destroy()
 
-                    self.window.children[frame_key].grid(row=int(frame_key.split(',')[0]),
-                                                         column=int(frame_key.split(',')[1]))
-                    im = self.add_card(f"btn{frame_key}", SetGameHandler.ImagesPath + new_cards[k].path_2_image,
-                                       self.window.children[frame_key])
-                    im.pack(pady=5, padx=5)
-                    self.board.append(new_cards[k])
-                    k += 1
-            self.cards_amount = 15
+                        self.window.children[frame_key].grid(row=int(frame_key.split(',')[0]),
+                                                             column=int(frame_key.split(',')[1]))
+                        im = self.add_card(f"btn{frame_key}", SetGameHandler.ImagesPath + new_cards[k].path_2_image,
+                                           self.window.children[frame_key])
+                        im.pack(pady=5, padx=5)
+                        self.board.append(new_cards[k])
+                        k += 1
+                self.cards_amount = 15
 
     def remove_3_cards(self):
         if self.cards_amount != 15:
@@ -218,24 +227,36 @@ class SetGameHandler:
         """
         while self.is_active:
             if len(self.selected_btn) == 3:  # must be 3 cards in order to ba a SET
-                # get the selected cards objects and check if they are a SET:
+
+                # get the selected cards objects:
                 _cards = []
                 for im in self.selected_btn:
                     _cards.append([c for c in self.all_cards if c.path_2_image == im.cget('text').split('\\')[-1]][0])
+                # check if they are a SET:
                 if CheckSet.check_set(_cards[0], _cards[1], _cards[2]):
                     # if yes - update the selected button to new cards
                     messagebox.showinfo("This is a SET!", "This is a SET!")
                     if self.cards_amount <= 12:
                         new_cards = self.get_k_random_cards()
-                        for i, btn in enumerate(self.selected_btn):
-                            path = SetGameHandler.ImagesPath + new_cards[i].path_2_image
-                            new_im = ImageTk.PhotoImage(Image.open(path))
-                            btn.config(text=path, image=new_im)
-                            btn.image = new_im
-                            # update self.board
-                            self.board.remove(_cards[i])
-                            self.board.append(new_cards[i])
-                    else:  # col 4 is the last one
+
+                        if not new_cards:  # if the deck is empty - fill with the `PlaceHolder`
+                            for i, btn in enumerate(self.selected_btn):
+                                new_im = ImageTk.PhotoImage(Image.open(SetGameHandler.PlaceHolder))
+                                btn.config(text=SetGameHandler.PlaceHolder, image=new_im)
+                                btn.image = new_im
+                                # update self.board
+                                self.board.remove(_cards[i])
+                        else:  # - add the new cards
+                            for i, btn in enumerate(self.selected_btn):
+                                path = SetGameHandler.ImagesPath + new_cards[i].path_2_image
+                                new_im = ImageTk.PhotoImage(Image.open(path))
+                                btn.config(text=path, image=new_im)
+                                btn.image = new_im
+                                # update self.board
+                                self.board.remove(_cards[i])
+                                self.board.append(new_cards[i])
+
+                    else:
                         self.remove_3_cards()
                         self.cards_amount = 12
 
@@ -243,7 +264,7 @@ class SetGameHandler:
                     messagebox.showerror("Not a SET!", "Not a SET!")
 
                 for btn in self.selected_btn:
-                    btn.config(bg="black")
+                    btn.config(bg="black", highlightthickness=1)
 
                 self.selected_btn = []
 
@@ -265,9 +286,12 @@ class SetGameHandler:
         th = threading.Thread(target=self.check_it)
         th.start()
 
-        # TODO: add 3 cards when there is no set
-
-        # TODO: handle when the deck is finished
+        # TODO: add 3 cards only if checked that there is no more SETs
+        # TODO: make an option to have more than 15 cards on the board
+        # TODO: add an help option:
+        #  when add 3 more cards tell the player that there is a set and give him an hint if he want
+        #  a button that gives a hint
+        #  - the hint is one card in another color
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.window.mainloop()
 
