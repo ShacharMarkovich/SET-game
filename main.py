@@ -1,11 +1,14 @@
-import copy
 import json
+import copy
 import os
 import random
 import threading
 import tkinter as tk
+import tkinter.messagebox
 from itertools import combinations
-from tkinter import messagebox
+from time import sleep
+from tkinter import messagebox, DISABLED, NORMAL
+from tkinter.messagebox import askyesno
 from typing import List, Union
 
 from PIL import Image, ImageTk
@@ -29,14 +32,17 @@ class SetGameHandler:
         self.window = tk.Tk()
         self.window.iconbitmap(SetGameHandler.Icon)
         self.window.title("The SET Game - by Shachar Markovich")
+
+        self.add_cards_state = None
+
+        if not hasattr(self, 'th'):
+            self.th = threading.Thread(target=self.check_it)
         self.is_active = True
 
         self.all_cards = []
         self.available_cards = []
         self.board = []
-
-        self.load_all_cards()
-
+        self.start_over = False
         self.selected_btn = []
         self.cards_amount = 12
 
@@ -130,12 +136,21 @@ class SetGameHandler:
         return im1
 
     def help_me(self):
+        ans = self.find_set()
+        if ans:
+
+            ans[0].config(bg="blue", highlightthickness=3)
+            ans[1].config(bg="blue", highlightthickness=3)
+            ans[2].config(bg="blue", highlightthickness=3)
+        else:
+            messagebox.showerror("Oops", "Sorry!\nThere is no set!\nPlease add 3 more cards!")
+
+    def find_set(self):
         """
         try to find a set.
-        if there is a SET - show it to the player,
-        else - show fit message.
+
+        :returns: if there is a SET - return the buttons of the SET,    else - return False show fit message.
         """
-        # TODO: make it return the cards and how show them
         # get all cards and their button on the screen:
         board_cards = {}
         for i in range(3):
@@ -151,21 +166,28 @@ class SetGameHandler:
             if CheckSet.check_set(board_cards[possible_set[0]][1],
                                   board_cards[possible_set[1]][1],
                                   board_cards[possible_set[2]][1]):
-                board_cards[possible_set[0]][0].config(bg="blue", highlightthickness=3)
-                board_cards[possible_set[1]][0].config(bg="blue", highlightthickness=3)
-                board_cards[possible_set[2]][0].config(bg="blue", highlightthickness=3)
-                return
-        messagebox.showerror("Oops", "Sorry!\nThere is no set!\nPlease add 3 more cards!")
+                return (board_cards[possible_set[0]][0],
+                        board_cards[possible_set[1]][0],
+                        board_cards[possible_set[2]][0])
+        return False
 
     def add_3_cards(self):
         if self.cards_amount == 15:
             messagebox.showerror("Oops", "Sorry!\nI cannot add more cards")
         else:
-            k = 0
             new_cards = self.get_k_random_cards()
             if not new_cards:
                 messagebox.showerror("Oops", "No more cards to add!")
             else:
+                # ask the user if he wants a hint instead of adding 3 cards, only when there is a SET
+                a_set = self.find_set()
+                if a_set:
+                    if askyesno("Add 3 cards?", "there is at least one SET in the board!\nDo you want a hint?"):
+                        a_set[0]['background'] = "dark green"
+                        # self.change_bg(a_set[0])
+                        return
+
+                k = 0
                 for frame_key in (k for k in self.window.children.keys() if ',' in k):
                     child_id = list(self.window.children[frame_key].children)[0]
                     if self.window.children[frame_key].children[child_id].cget('text') == self.PlaceHolder:
@@ -179,6 +201,7 @@ class SetGameHandler:
                         self.board.append(new_cards[k])
                         k += 1
                 self.cards_amount = 15
+            self.add_cards_state()
 
     def remove_3_cards(self):
         if self.cards_amount != 15:
@@ -192,8 +215,9 @@ class SetGameHandler:
                 new_im = ImageTk.PhotoImage(Image.open(SetGameHandler.PlaceHolder))
                 btn.config(text=SetGameHandler.PlaceHolder, image=new_im)
                 btn.image = new_im
-                # update self.board
                 self.board.remove(selected_cards[i])
+
+            self.add_cards_state()
 
     def load_gui_board(self):
         """
@@ -225,8 +249,13 @@ class SetGameHandler:
         # load the add cards button:
         frame = tk.Frame(name="add_cards_frame", master=self.window, relief=tk.RAISED)
         frame.grid(row=1, column=5)  # column is five in order to  save place for more optional 3 cards
-        help_btn = tk.Button(text="add 3 cards", master=frame, command=self.add_3_cards)
-        help_btn.pack(pady=5, padx=5)
+        add_cards_btn = tk.Button(text="add 3 cards", master=frame, command=self.add_3_cards)
+        self.add_cards_state = lambda: self.__change_state(add_cards_btn)
+        add_cards_btn.pack(pady=5, padx=5)
+
+    @staticmethod
+    def __change_state(btn):
+        btn['state'] = NORMAL if btn['state'] == DISABLED else DISABLED
 
     def check_it(self):
         """
@@ -234,7 +263,6 @@ class SetGameHandler:
         """
         while self.is_active:
             if len(self.selected_btn) == 3:  # must be 3 cards in order to ba a SET
-
                 # get the selected cards objects:
                 _cards = []
                 for im in self.selected_btn:
@@ -242,7 +270,8 @@ class SetGameHandler:
                 # check if they are a SET:
                 if CheckSet.check_set(_cards[0], _cards[1], _cards[2]):
                     # if yes - update the selected button to new cards
-                    messagebox.showinfo("This is a SET!", "This is a SET!")
+                    self.flash_color(self.selected_btn, "#00ff00")
+                    sleep(1.5)
                     if self.cards_amount <= 12:
                         new_cards = self.get_k_random_cards()
 
@@ -253,6 +282,12 @@ class SetGameHandler:
                                 btn.image = new_im
                                 # update self.board
                                 self.board.remove(_cards[i])
+
+                            if not self.find_set():
+                                messagebox.showinfo("Game Over",
+                                                    "The game is finished, no more cards and no more SETs!")
+                                self.on_closing()
+
                         else:  # - add the new cards
                             for i, btn in enumerate(self.selected_btn):
                                 path = SetGameHandler.ImagesPath + new_cards[i].path_2_image
@@ -268,12 +303,29 @@ class SetGameHandler:
                         self.cards_amount = 12
 
                 else:
-                    messagebox.showerror("Not a SET!", "Not a SET!")
+                    self.flash_color(self.selected_btn, "#ff4040")
+                    sleep(1.5)
 
                 for btn in self.selected_btn:
                     btn.config(bg="white", highlightthickness=3)
 
                 self.selected_btn = []
+
+    def flash_color(self, btns, color):
+        for btn in btns:
+            btn.config(background=color)
+
+        def __flash_color(btns, count):
+            if count < 6:
+                for btn in btns:
+                    current_color = btn.cget("background")
+                    next_color = color if current_color == "white" else "white"
+                    btn.config(background=next_color)
+                count += 1
+                self.window.after(100 if count < 6 else 1500, __flash_color, btns, count)
+
+        times = 0
+        __flash_color(btns, times)
 
     def on_closing(self):
         """
@@ -286,12 +338,10 @@ class SetGameHandler:
         """
         Play the SET game
         """
+        self.load_all_cards()
         self.board = self.get_board()
-
         self.load_gui_board()
-
-        th = threading.Thread(target=self.check_it)
-        th.start()
+        self.th.start()
 
         # TODO: add 3 cards only if checked that there is no more SETs
         # TODO: make an option to have more than 15 cards on the board
