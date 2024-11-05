@@ -1,8 +1,15 @@
-from enum import Enum
-
-
 class Card:
-    def __init__(self, count, shape, shading, color, path) -> None:
+    def __init__(self, count: int, shape: str, shading: str, color: str, path: str):
+        """class c'tor
+
+        Args:
+            count (int): shapes on the card
+            shape (str): the shape
+            shading (str): the shading
+            color (str): shape's color
+            path (str): path to card's image
+        """
+
         self.count = count
         self.shape = shape
         self.shading = shading
